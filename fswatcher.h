@@ -11,6 +11,8 @@
 #include <inotifytools/inotify.h>
 #include <inotifytools/inotifytools.h>
 
+#define DELETE_DELAY 5 // seconds
+
 class FSWatcher : public QObject
 {
     Q_OBJECT
@@ -26,9 +28,8 @@ signals:
     void moved(QString path1, QString path2, bool is_dir);
     void deleted(QString path, bool is_dir);
 
-
 private:
-    inotify_event *fetchEvent();
+    void handleMovedAwayFile(QString path);
     QString m_path;
     int m_events;
 

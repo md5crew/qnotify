@@ -36,9 +36,21 @@ void FSWatcher::watch()
     uint32_t cookie;
 
     while(true) {
-        event = fetchEvent();
-        if(!event) {
-            return;
+        event = inotifytools_next_event( DELETE_DELAY );
+        if ( !event ) {
+            if ( !inotifytools_error() ) {
+                // qDebug() << "Cycle elapsed";
+                if(!moved_from.isEmpty()) {
+                    handleMovedAwayFile(moved_from);
+                    moved_from.clear();
+                    cookie = 0;
+                }
+                continue;
+            }
+            else {
+                qWarning() << "Watching stopped by error:" <<  strerror( inotifytools_error() );
+                return;
+            }
         }
 
         QString path;
@@ -58,12 +70,7 @@ void FSWatcher::watch()
 
         // Moved away
         if ( !moved_from.isEmpty() && !(event->mask & IN_MOVED_TO)) {
-            if ( !inotifytools_remove_watch_by_filename(
-                     moved_from.toStdString().c_str() ) ) {
-                qWarning() << "Error removing watch on" << moved_from
-                           << ":" << strerror( inotifytools_error() );
-            }
-            emit deleted(moved_from, (event->mask & IN_ISDIR));
+            handleMovedAwayFile(moved_from);
             moved_from.clear();
             cookie = 0;
         }
@@ -120,18 +127,12 @@ FSWatcher::~FSWatcher()
     inotifytools_cleanup();
 }
 
-inotify_event *FSWatcher::fetchEvent()
+void FSWatcher::handleMovedAwayFile(QString path)
 {
-    inotify_event *event = inotifytools_next_event( 0 );
-    if ( !event ) {
-        if ( !inotifytools_error() ) {
-            qWarning() << "Watching stopped by timeout";
-            return NULL;
-        }
-        else {
-            qWarning() << "Watching stopped by error:" <<  strerror( inotifytools_error() );
-            return NULL;
-        }
+    if ( !inotifytools_remove_watch_by_filename(
+             path.toStdString().c_str() ) ) {
+        qWarning() << "Error removing watch on" << path
+                   << ":" << strerror( inotifytools_error() );
     }
-    return event;
+    emit deleted(path, path.endsWith(QDir::separator()));
 }

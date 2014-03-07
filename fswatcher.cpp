@@ -48,7 +48,7 @@ void FSWatcher::watch()
         }
 
         // Event debug
-        qDebug() << event->cookie << inotifytools_event_to_str(event->mask) << path;
+        // qDebug() << event->cookie << inotifytools_event_to_str(event->mask) << path;
 
         // Obvious delete
         if (event->mask & IN_DELETE) {
